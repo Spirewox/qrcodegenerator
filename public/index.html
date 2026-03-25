@@ -1,0 +1,2182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Code Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: hsl(240 10% 3.9%);
+      --surface: hsl(240 6% 6.5%);
+      --surface-2: hsl(240 3.7% 15.9%);
+      --border: hsl(240 3.7% 15.9%);
+      --text: hsl(0 0% 98%);
+      --text-muted: hsl(240 5% 64.9%);
+      --primary: hsl(0 0% 98%);
+      --primary-fg: hsl(240 5.9% 10%);
+      --accent: hsl(240 3.7% 15.9%);
+      --accent-fg: hsl(0 0% 98%);
+      --danger: hsl(0 62.8% 30.6%);
+      --danger-fg: hsl(0 0% 98%);
+      --success: hsl(142 71% 45%);
+      --ring: hsl(240 4.9% 83.9%);
+      --radius: 0.5rem;
+      --chart: hsl(0 0% 98%);
+      --chart-muted: hsl(240 5% 64.9%);
+      --badge: hsl(240 3.7% 15.9%);
+      --badge-fg: hsl(0 0% 98%);
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Layout */
+    .app { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 240px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      z-index: 10;
+    }
+
+    .sidebar .logo {
+      font-size: 16px;
+      font-weight: 600;
+      padding: 8px 12px 16px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: -0.02em;
+    }
+
+    .sidebar .logo svg { width: 22px; height: 22px; }
+
+    .nav-item {
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-muted);
+      transition: all 0.15s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+    }
+
+    .nav-item:hover { background: var(--surface-2); color: var(--text); }
+    .nav-item.active { background: var(--surface-2); color: var(--text); }
+    .nav-item svg { width: 16px; height: 16px; }
+
+    .main {
+      margin-left: 240px;
+      flex: 1;
+      padding: 32px 40px;
+      max-width: 1200px;
+    }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    h1 { font-size: 24px; margin-bottom: 24px; font-weight: 600; letter-spacing: -0.025em; }
+    h2 { font-size: 16px; margin-bottom: 12px; font-weight: 600; letter-spacing: -0.01em; }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    /* Stats */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .stat-card .label { font-size: 13px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500; }
+    .stat-card .value { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; }
+    .stat-card .value.primary { color: var(--text); }
+    .stat-card .value.accent { color: var(--text); }
+    .stat-card .value.success { color: var(--success); }
+
+    /* Form */
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 14px; color: var(--text); margin-bottom: 6px; font-weight: 500; }
+
+    input[type="text"], input[type="url"], input[type="password"] {
+      width: 100%;
+      padding: 8px 12px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.15s;
+    }
+
+    input[type="text"]:focus, input[type="url"]:focus, input[type="password"]:focus {
+      border-color: var(--ring);
+      box-shadow: 0 0 0 2px hsla(240,4.9%,83.9%,0.15);
+    }
+
+    input[type="text"]::placeholder, input[type="url"]::placeholder, input[type="password"]::placeholder { color: var(--text-muted); }
+
+    input[type="color"] {
+      width: 48px;
+      height: 36px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: transparent;
+      cursor: pointer;
+      padding: 2px;
+      display: none;
+    }
+
+    .color-row { display: flex; gap: 12px; }
+    .color-row .form-group { flex: 1; }
+
+    /* Color Picker */
+    .cpick { position: relative; }
+
+    .cpick-trigger {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all 0.15s;
+      width: 100%;
+    }
+
+    .cpick-trigger:hover { border-color: var(--ring); }
+
+    .cpick-swatch {
+      width: 24px;
+      height: 24px;
+      border-radius: calc(var(--radius) - 2px);
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .cpick-hex {
+      font-size: 13px;
+      font-family: 'Inter', monospace;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .cpick-panel {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      display: none;
+      z-index: 60;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      min-width: 220px;
+    }
+
+    .cpick-panel.open { display: block; }
+
+    .cpick-presets {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .cpick-preset {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: calc(var(--radius) - 2px);
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.1s;
+      padding: 0;
+      outline: none;
+    }
+
+    .cpick-preset:hover { transform: scale(1.12); }
+    .cpick-preset.active { border-color: var(--ring); box-shadow: 0 0 0 1px var(--ring); }
+
+    .cpick-input-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .cpick-input-row span {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .cpick-input {
+      flex: 1;
+      padding: 6px 8px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 13px;
+      font-family: 'Inter', monospace;
+      text-transform: uppercase;
+      outline: none;
+    }
+
+    .cpick-input:focus { border-color: var(--ring); }
+
+    .cpick-native-btn {
+      padding: 6px 10px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-family: inherit;
+      font-weight: 500;
+      transition: all 0.1s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cpick-native-btn:hover { border-color: var(--ring); color: var(--text); }
+
+    .cpick-native-btn input[type="color"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Compact color picker for download menus */
+    .cpick-compact .cpick-trigger { padding: 5px 8px; gap: 6px; }
+    .cpick-compact .cpick-swatch { width: 18px; height: 18px; border-radius: 3px; }
+    .cpick-compact .cpick-hex { font-size: 12px; }
+    .cpick-compact .cpick-panel { min-width: 200px; }
+    .cpick-compact .cpick-presets { gap: 3px; margin-bottom: 8px; }
+    .cpick-compact .cpick-preset { border-radius: 3px; }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-primary { background: var(--primary); color: var(--primary-fg); }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-danger { background: hsl(0 62.8% 30.6%); color: var(--danger-fg); }
+    .btn-danger:hover { background: hsl(0 62.8% 35%); }
+    .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--accent); color: var(--accent-fg); }
+    .btn-sm { padding: 6px 12px; font-size: 13px; height: 32px; }
+
+    /* QR Grid */
+    .qr-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+
+    .qr-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: all 0.15s;
+    }
+
+    .qr-card:hover { border-color: var(--ring); }
+
+    .qr-card img {
+      width: 160px;
+      height: 160px;
+      border-radius: var(--radius);
+      margin-bottom: 14px;
+      background: #fff;
+      padding: 8px;
+    }
+
+    .qr-card .qr-label {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 2px;
+      text-align: center;
+      word-break: break-word;
+    }
+
+    .qr-card .qr-url {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      text-align: center;
+      word-break: break-all;
+      max-width: 240px;
+    }
+
+    .qr-card .scan-badge {
+      background: var(--badge);
+      padding: 2px 10px;
+      border-radius: 9999px;
+      font-size: 12px;
+      color: var(--badge-fg);
+      font-weight: 500;
+      margin-bottom: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .qr-card .qr-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .qr-card.inactive { opacity: 0.5; }
+    .qr-card.inactive .qr-label::after { content: ' (inactive)'; color: hsl(0 62.8% 50%); font-size: 11px; }
+
+    /* Download dropdown */
+    .dl-wrap { position: relative; display: inline-block; }
+
+    .dl-menu {
+      position: absolute;
+      bottom: calc(100% + 4px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      min-width: 220px;
+      display: none;
+      z-index: 50;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    }
+
+    .dl-menu.show { display: block; }
+
+    .dl-menu h4 {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+
+    .dl-menu .dl-row {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .dl-menu .dl-opt {
+      flex: 1;
+      padding: 6px 10px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+
+    .dl-menu .dl-opt:hover { border-color: var(--ring); color: var(--text); }
+    .dl-menu .dl-opt.selected { background: var(--primary); border-color: var(--primary); color: var(--primary-fg); }
+
+    .dl-menu .dl-color-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .dl-menu .dl-color-row label {
+      font-size: 11px;
+      color: var(--text-muted);
+      min-width: 30px;
+    }
+
+    .dl-menu .dl-go {
+      width: 100%;
+      padding: 8px;
+      border-radius: var(--radius);
+      border: none;
+      background: var(--primary);
+      color: var(--primary-fg);
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .dl-menu .dl-go:hover { opacity: 0.9; }
+
+    /* Chart */
+    .chart-container {
+      width: 100%;
+      height: 200px;
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      padding: 10px 0;
+      overflow: hidden;
+    }
+
+    .chart-bar-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .chart-bar {
+      width: 100%;
+      max-width: 40px;
+      background: var(--chart);
+      border-radius: 3px 3px 0 0;
+      min-height: 4px;
+      transition: height 0.3s;
+    }
+
+    .chart-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      max-height: 60px;
+      overflow: hidden;
+    }
+
+    .chart-count {
+      font-size: 10px;
+      color: var(--chart-muted);
+      font-weight: 600;
+    }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th {
+      text-align: left;
+      padding: 10px 16px;
+      color: var(--text-muted);
+      font-weight: 500;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+
+    td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tr:hover td { background: var(--surface-2); }
+
+    /* Top QR list */
+    .top-list { list-style: none; }
+
+    .top-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .top-list li:last-child { border-bottom: none; }
+    .top-list .top-label { font-weight: 500; font-size: 14px; }
+    .top-list .top-count { color: var(--text); font-weight: 700; font-size: 18px; }
+
+    /* Detail modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal-overlay.show { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      width: 600px;
+      max-width: 95vw;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    .modal h2 { margin-bottom: 16px; }
+
+    .modal .close-btn {
+      float: right;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: var(--radius);
+      transition: all 0.1s;
+    }
+
+    .modal .close-btn:hover { background: var(--surface-2); color: var(--text); }
+
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty svg { width: 48px; height: 48px; margin-bottom: 12px; opacity: 0.3; }
+    .empty p { font-size: 14px; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 10px 16px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 200;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    /* Logo upload */
+    .logo-upload {
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+    }
+
+    .logo-upload:hover { border-color: var(--ring); }
+    .logo-upload.has-file { border-style: solid; }
+
+    .logo-upload input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .logo-upload .upload-text {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .logo-upload .upload-text svg {
+      display: block;
+      margin: 0 auto 6px;
+      width: 24px;
+      height: 24px;
+      opacity: 0.4;
+    }
+
+    .logo-preview {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-preview img {
+      width: 48px;
+      height: 48px;
+      border-radius: calc(var(--radius) - 2px);
+      object-fit: contain;
+      background: #fff;
+      padding: 4px;
+    }
+
+    .logo-preview .logo-info {
+      flex: 1;
+      text-align: left;
+    }
+
+    .logo-preview .logo-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .logo-preview .logo-remove {
+      font-size: 12px;
+      color: hsl(0 62.8% 50%);
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: inherit;
+      font-weight: 500;
+    }
+
+    .logo-preview .logo-remove:hover { text-decoration: underline; }
+
+    .logo-size-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-size-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--text);
+      height: 4px;
+    }
+
+    .logo-size-row .size-val {
+      font-size: 13px;
+      color: var(--text-muted);
+      min-width: 32px;
+      text-align: right;
+      font-weight: 500;
+    }
+
+    /* Auth pages */
+    .auth-wrapper {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      padding: 20px;
+    }
+
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .auth-card .auth-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 24px;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .auth-card .auth-logo svg { width: 24px; height: 24px; }
+
+    .auth-card h1 {
+      text-align: center;
+      font-size: 20px;
+      margin-bottom: 4px;
+    }
+
+    .auth-card .auth-sub {
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .auth-card .form-group { margin-bottom: 14px; }
+
+    .auth-card .auth-error {
+      background: hsla(0, 62.8%, 30.6%, 0.15);
+      border: 1px solid hsl(0 62.8% 30.6%);
+      color: hsl(0 90% 70%);
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      margin-bottom: 14px;
+      display: none;
+    }
+
+    .auth-card .auth-success {
+      background: hsla(142, 71%, 45%, 0.15);
+      border: 1px solid var(--success);
+      color: var(--success);
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      margin-bottom: 14px;
+      display: none;
+    }
+
+    .auth-card .auth-footer {
+      text-align: center;
+      margin-top: 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .auth-card .auth-footer a {
+      color: var(--text);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .auth-card .auth-link {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: underline;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: inherit;
+      margin-top: 8px;
+      display: inline-block;
+    }
+
+    .auth-card .reset-token-box {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      word-break: break-all;
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--text);
+      margin: 12px 0;
+      text-align: center;
+    }
+
+    /* Sidebar user section */
+    .sidebar-user {
+      margin-top: auto;
+      padding: 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sidebar-user .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--surface-2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      flex-shrink: 0;
+    }
+
+    .sidebar-user .user-info { flex: 1; min-width: 0; }
+    .sidebar-user .user-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-user .user-email { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .sidebar-user .logout-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: var(--radius);
+    }
+
+    .sidebar-user .logout-btn:hover { color: var(--text); background: var(--surface-2); }
+    .sidebar-user .logout-btn svg { width: 16px; height: 16px; display: block; }
+
+    /* Password toggle */
+    .pw-wrap {
+      position: relative;
+    }
+
+    .pw-wrap input {
+      padding-right: 40px;
+    }
+
+    .pw-toggle {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 2px;
+      display: flex;
+      align-items: center;
+    }
+
+    .pw-toggle:hover { color: var(--text); }
+    .pw-toggle svg { width: 18px; height: 18px; }
+
+    /* Hide app shell when on auth pages */
+    body.auth-mode .app,
+    body.auth-mode .mobile-header,
+    body.auth-mode .bottom-nav,
+    body.auth-mode .mobile-overlay { display: none !important; }
+
+    /* Mobile header (hidden on desktop) */
+    .mobile-header {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 16px;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 20;
+    }
+
+    .mobile-header .logo {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mobile-header .logo svg { width: 20px; height: 20px; }
+
+    .hamburger {
+      background: none;
+      border: none;
+      color: var(--text);
+      cursor: pointer;
+      padding: 8px;
+      border-radius: var(--radius);
+    }
+
+    .hamburger:hover { background: var(--surface-2); }
+    .hamburger svg { width: 20px; height: 20px; display: block; }
+
+    .mobile-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 25;
+    }
+
+    .mobile-overlay.show { display: block; }
+
+    /* Mobile bottom nav (hidden on desktop) */
+    .bottom-nav {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      z-index: 20;
+      padding: 0 8px;
+      align-items: center;
+      justify-content: space-around;
+    }
+
+    .bottom-nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 8px 12px;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      border-radius: var(--radius);
+      transition: color 0.15s;
+    }
+
+    .bottom-nav-item svg { width: 20px; height: 20px; }
+    .bottom-nav-item.active { color: var(--text); }
+
+    @media (max-width: 767px) {
+      .sidebar { transform: translateX(-100%); transition: transform 0.25s ease; z-index: 30; }
+      .sidebar.open { transform: translateX(0); }
+      .mobile-header { display: flex; }
+      .bottom-nav { display: flex; }
+      .main { margin-left: 0; padding: 72px 16px 80px; max-width: 100%; }
+
+      h1 { font-size: 20px; margin-bottom: 16px; }
+      h2 { font-size: 15px; }
+
+      .stats-row { grid-template-columns: 1fr; gap: 8px; margin-bottom: 16px; }
+      .stat-card { padding: 14px; }
+      .stat-card .value { font-size: 24px; }
+
+      .card { padding: 16px; margin-bottom: 12px; }
+
+      .qr-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .qr-card { padding: 14px; }
+      .qr-card img { width: 120px; height: 120px; }
+      .qr-card .qr-label { font-size: 13px; }
+      .qr-card .qr-url { font-size: 11px; max-width: 140px; }
+      .qr-card .scan-badge { font-size: 11px; }
+      .qr-card .qr-actions { gap: 4px; }
+      .btn-sm { padding: 5px 8px; font-size: 11px; height: 28px; }
+
+      /* Dashboard grid */
+      [style*="grid-template-columns: 2fr 1fr"] {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+      }
+
+      /* Generate form grid */
+      [style*="grid-template-columns: 1fr 1fr"] {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 16px !important;
+      }
+
+      .color-row { gap: 8px; }
+
+      .chart-container { height: 140px; }
+
+      .modal { padding: 16px; width: 100%; max-width: 100vw; border-radius: 12px 12px 0 0; margin-top: auto; }
+
+      table { font-size: 12px; }
+      th, td { padding: 8px 10px; }
+
+      .dl-menu { min-width: 200px; }
+
+      .toast { bottom: 80px; right: 16px; left: 16px; text-align: center; }
+    }
+
+    @media (max-width: 400px) {
+      .qr-grid { grid-template-columns: 1fr; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Mobile header -->
+  <header class="mobile-header">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="3" height="3"/><line x1="21" y1="14" x2="21" y2="21"/><line x1="14" y1="21" x2="21" y2="21"/></svg>
+      QR Generator
+    </div>
+    <button class="hamburger" onclick="toggleMobileMenu()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+    </button>
+  </header>
+  <div class="mobile-overlay" id="mobile-overlay" onclick="toggleMobileMenu()"></div>
+
+  <!-- Auth Pages (shown when not logged in) -->
+  <div id="auth-pages">
+    <!-- Login -->
+    <div id="page-login" class="auth-wrapper" style="display:none;">
+      <div class="auth-card">
+        <div class="auth-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="3" height="3"/><line x1="21" y1="14" x2="21" y2="21"/><line x1="14" y1="21" x2="21" y2="21"/></svg>
+          QR Generator
+        </div>
+        <h1>Welcome back</h1>
+        <p class="auth-sub">Sign in to your account</p>
+        <div class="auth-error" id="login-error"></div>
+        <form onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="text" id="login-email" placeholder="you@example.com" required>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <div class="pw-wrap">
+              <input type="password" id="login-password" placeholder="Enter your password" required>
+              <button type="button" class="pw-toggle" onclick="togglePw(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Sign in</button>
+          <button type="button" class="auth-link" onclick="showAuth('forgot')">Forgot your password?</button>
+        </form>
+        <div class="auth-footer">Don't have an account? <a onclick="showAuth('signup')">Sign up</a></div>
+      </div>
+    </div>
+
+    <!-- Signup -->
+    <div id="page-signup" class="auth-wrapper" style="display:none;">
+      <div class="auth-card">
+        <div class="auth-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="3" height="3"/><line x1="21" y1="14" x2="21" y2="21"/><line x1="14" y1="21" x2="21" y2="21"/></svg>
+          QR Generator
+        </div>
+        <h1>Create an account</h1>
+        <p class="auth-sub">Get started with QR Generator</p>
+        <div class="auth-error" id="signup-error"></div>
+        <form onsubmit="handleSignup(event)">
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="signup-name" placeholder="Your name" required>
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="text" id="signup-email" placeholder="you@example.com" required>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <div class="pw-wrap">
+              <input type="password" id="signup-password" placeholder="At least 6 characters" required>
+              <button type="button" class="pw-toggle" onclick="togglePw(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Confirm Password</label>
+            <div class="pw-wrap">
+              <input type="password" id="signup-confirm" placeholder="Re-enter password" required>
+              <button type="button" class="pw-toggle" onclick="togglePw(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Create account</button>
+        </form>
+        <div class="auth-footer">Already have an account? <a onclick="showAuth('login')">Sign in</a></div>
+      </div>
+    </div>
+
+    <!-- Forgot Password -->
+    <div id="page-forgot" class="auth-wrapper" style="display:none;">
+      <div class="auth-card">
+        <div class="auth-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="3" height="3"/><line x1="21" y1="14" x2="21" y2="21"/><line x1="14" y1="21" x2="21" y2="21"/></svg>
+          QR Generator
+        </div>
+        <h1>Reset password</h1>
+        <p class="auth-sub">Enter your email to get a reset token</p>
+        <div class="auth-error" id="forgot-error"></div>
+        <div class="auth-success" id="forgot-success"></div>
+        <form onsubmit="handleForgot(event)" id="forgot-form">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="text" id="forgot-email" placeholder="you@example.com" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Send reset token</button>
+        </form>
+        <div id="forgot-token-result" style="display:none;">
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom:8px;">Use this token to reset your password:</p>
+          <div class="reset-token-box" id="forgot-token-value"></div>
+          <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="showAuth('reset')">Reset password now</button>
+        </div>
+        <div class="auth-footer"><a onclick="showAuth('login')">Back to sign in</a></div>
+      </div>
+    </div>
+
+    <!-- Reset Password -->
+    <div id="page-reset" class="auth-wrapper" style="display:none;">
+      <div class="auth-card">
+        <div class="auth-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="3" height="3"/><line x1="21" y1="14" x2="21" y2="21"/><line x1="14" y1="21" x2="21" y2="21"/></svg>
+          QR Generator
+        </div>
+        <h1>Set new password</h1>
+        <p class="auth-sub">Enter your reset token and new password</p>
+        <div class="auth-error" id="reset-error"></div>
+        <div class="auth-success" id="reset-success"></div>
+        <form onsubmit="handleReset(event)">
+          <div class="form-group">
+            <label>Reset Token</label>
+            <input type="text" id="reset-token" placeholder="Paste your reset token" required>
+          </div>
+          <div class="form-group">
+            <label>New Password</label>
+            <div class="pw-wrap">
+              <input type="password" id="reset-password" placeholder="At least 6 characters" required>
+              <button type="button" class="pw-toggle" onclick="togglePw(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Confirm Password</label>
+            <div class="pw-wrap">
+              <input type="password" id="reset-confirm" placeholder="Re-enter password" required>
+              <button type="button" class="pw-toggle" onclick="togglePw(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Reset password</button>
+        </form>
+        <div class="auth-footer"><a onclick="showAuth('login')">Back to sign in</a></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="app">
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar-nav">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="3" height="3"/><line x1="21" y1="14" x2="21" y2="21"/><line x1="14" y1="21" x2="21" y2="21"/></svg>
+        QR Generator
+      </div>
+      <button class="nav-item active" onclick="nav('dashboard')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-item" onclick="nav('generate')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Generate QR
+      </button>
+      <button class="nav-item" onclick="nav('codes')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><circle cx="17.5" cy="17.5" r="3.5"/></svg>
+        My QR Codes
+      </button>
+      <div class="sidebar-user" id="sidebar-user" style="display:none;">
+        <div class="user-avatar" id="user-avatar"></div>
+        <div class="user-info">
+          <div class="user-name" id="user-name"></div>
+          <div class="user-email" id="user-email"></div>
+        </div>
+        <button class="logout-btn" onclick="handleLogout()" title="Sign out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main content -->
+    <div class="main">
+      <!-- Dashboard Page -->
+      <div id="page-dashboard" class="page active">
+        <h1>Dashboard</h1>
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="label">Total QR Codes</div>
+            <div class="value primary" id="stat-total-qr">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Total Scans</div>
+            <div class="value accent" id="stat-total-scans">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Avg Scans / Code</div>
+            <div class="value success" id="stat-avg-scans">0</div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+          <div class="card">
+            <h2>Scans Over Time</h2>
+            <div class="chart-container" id="dashboard-chart"></div>
+          </div>
+          <div class="card">
+            <h2>Top QR Codes</h2>
+            <ul class="top-list" id="top-qr-list"></ul>
+            <div id="top-qr-empty" class="empty" style="display:none;">
+              <p>No QR codes yet</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Recent Scans</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>QR Code</th><th>Scanned At</th><th>Device</th></tr></thead>
+              <tbody id="recent-scans-body"></tbody>
+            </table>
+          </div>
+          <div id="recent-empty" class="empty" style="display:none;">
+            <p>No scans recorded yet</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Generate Page -->
+      <div id="page-generate" class="page">
+        <h1>Generate QR Code</h1>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start;">
+          <div class="card">
+            <form id="qr-form" onsubmit="createQR(event)">
+              <div class="form-group">
+                <label for="qr-label">Label</label>
+                <input type="text" id="qr-label" placeholder="e.g. My Website" required>
+              </div>
+              <div class="form-group">
+                <label for="qr-url">Destination URL</label>
+                <input type="url" id="qr-url" placeholder="https://example.com" required>
+              </div>
+              <div class="color-row">
+                <div class="form-group">
+                  <label>QR Color</label>
+                  <div class="cpick" data-target="qr-color">
+                    <input type="color" id="qr-color" value="#000000">
+                    <div class="cpick-trigger" onclick="cpickToggle(this)">
+                      <div class="cpick-swatch" style="background:#000000"></div>
+                      <span class="cpick-hex">#000000</span>
+                    </div>
+                    <div class="cpick-panel"></div>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Background</label>
+                  <div class="cpick" data-target="qr-bg">
+                    <input type="color" id="qr-bg" value="#ffffff">
+                    <div class="cpick-trigger" onclick="cpickToggle(this)">
+                      <div class="cpick-swatch" style="background:#ffffff"></div>
+                      <span class="cpick-hex">#ffffff</span>
+                    </div>
+                    <div class="cpick-panel"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Brand Logo (optional)</label>
+                <div class="logo-upload" id="logo-upload-area">
+                  <input type="file" id="logo-file" accept="image/*" onchange="handleLogoSelect(this)">
+                  <div id="logo-empty-state" class="upload-text">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Click or drag to upload logo
+                  </div>
+                  <div id="logo-filled-state" class="logo-preview" style="display:none;">
+                    <img id="logo-thumb">
+                    <div class="logo-info">
+                      <div class="logo-name" id="logo-name"></div>
+                      <button type="button" class="logo-remove" onclick="removeLogo(event)">Remove</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group" id="logo-size-group" style="display:none;">
+                <label>Logo Size</label>
+                <div class="logo-size-row">
+                  <input type="range" id="logo-size" min="10" max="35" value="20" oninput="document.getElementById('logo-size-val').textContent=this.value+'%'">
+                  <span class="size-val" id="logo-size-val">20%</span>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary" style="width:100%; justify-content: center;">Generate QR Code</button>
+            </form>
+          </div>
+          <div class="card" id="preview-card" style="display:flex; flex-direction:column; align-items:center; min-height: 300px; justify-content:center;">
+            <div id="preview-empty" class="empty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="3" height="3"/></svg>
+              <p>Your QR code will appear here</p>
+            </div>
+            <div id="preview-result" style="display:none; text-align:center;">
+              <img id="preview-img" style="width:200px; height:200px; border-radius:12px; background:#fff; padding:12px; margin-bottom:12px;">
+              <p id="preview-label" style="font-weight:600; margin-bottom:4px;"></p>
+              <p id="preview-url" style="font-size:12px; color:var(--text-muted); margin-bottom:12px; word-break:break-all;"></p>
+              <div style="display:flex; gap:8px; justify-content:center;">
+                <div class="dl-wrap">
+                  <button class="btn btn-ghost btn-sm" onclick="toggleDlMenu(event,'preview-dl')">Download</button>
+                  <div class="dl-menu" id="preview-dl">
+                    <h4>Format</h4>
+                    <div class="dl-row">
+                      <button class="dl-opt selected" onclick="setDlOpt(this,'fmt','png')">PNG</button>
+                      <button class="dl-opt" onclick="setDlOpt(this,'fmt','svg')">SVG</button>
+                    </div>
+                    <h4>Background</h4>
+                    <div class="dl-row">
+                      <button class="dl-opt selected" onclick="setDlOpt(this,'bg','solid')">Solid</button>
+                      <button class="dl-opt" onclick="setDlOpt(this,'bg','transparent')">Transparent</button>
+                    </div>
+                    <h4>Colors</h4>
+                    <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">
+                      <div style="display:flex; align-items:center; gap:6px;">
+                        <label style="font-size:11px; color:var(--text-muted); min-width:22px;">QR</label>
+                        <div class="cpick cpick-compact" data-target="preview-dl-color" style="flex:1;">
+                          <input type="color" id="preview-dl-color" value="#000000">
+                          <div class="cpick-trigger" onclick="cpickToggle(this)">
+                            <div class="cpick-swatch" style="background:#000000"></div>
+                            <span class="cpick-hex">#000000</span>
+                          </div>
+                          <div class="cpick-panel"></div>
+                        </div>
+                      </div>
+                      <div style="display:flex; align-items:center; gap:6px;">
+                        <label style="font-size:11px; color:var(--text-muted); min-width:22px;">BG</label>
+                        <div class="cpick cpick-compact" data-target="preview-dl-bg" style="flex:1;">
+                          <input type="color" id="preview-dl-bg" value="#ffffff">
+                          <div class="cpick-trigger" onclick="cpickToggle(this)">
+                            <div class="cpick-swatch" style="background:#ffffff"></div>
+                            <span class="cpick-hex">#ffffff</span>
+                          </div>
+                          <div class="cpick-panel"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <button class="dl-go" onclick="execDownload('preview')">Download</button>
+                  </div>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="copyTrackingUrl()">Copy Link</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QR Codes List Page -->
+      <div id="page-codes" class="page">
+        <h1>My QR Codes</h1>
+        <div class="qr-grid" id="qr-grid"></div>
+        <div id="codes-empty" class="empty" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="3" height="3"/></svg>
+          <p>No QR codes yet. Generate your first one!</p>
+          <button class="btn btn-primary" style="margin-top:16px;" onclick="nav('generate')">Generate QR Code</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail Modal -->
+  <div class="modal-overlay" id="detail-modal">
+    <div class="modal">
+      <button class="close-btn" onclick="closeModal()">&times;</button>
+      <div style="display:flex; gap: 20px; align-items: flex-start; margin-bottom: 20px;">
+        <img id="modal-img" style="width:140px; height:140px; border-radius:8px; background:#fff; padding:8px;">
+        <div>
+          <h2 id="modal-label" style="margin-bottom:6px;"></h2>
+          <p id="modal-url" style="font-size:13px; color:var(--text-muted); word-break:break-all; margin-bottom:8px;"></p>
+          <p id="modal-tracking" style="font-size:12px; color:var(--accent); margin-bottom:8px; word-break:break-all;"></p>
+          <p id="modal-created" style="font-size:12px; color:var(--text-muted);"></p>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <h2>Scan History (Last 30 days)</h2>
+        <div class="chart-container" id="modal-chart"></div>
+      </div>
+      <div class="card">
+        <h2>Recent Scans</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Time</th><th>Device</th></tr></thead>
+            <tbody id="modal-scans-body"></tbody>
+          </table>
+        </div>
+        <div id="modal-scans-empty" style="display:none; text-align:center; padding:20px; color:var(--text-muted);">No scans yet</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let lastCreated = null;
+
+    // API helper
+    async function api(path, method = 'GET', body) {
+      const opts = { method, headers: {} };
+      if (body) {
+        opts.headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(body);
+      }
+      const res = await fetch(path, opts);
+      if (res.status === 401) {
+        currentUser = null;
+        showAuth('login');
+        throw new Error('Session expired');
+      }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error || 'Request failed');
+      }
+      return res.json();
+    }
+
+    // Navigation
+    function nav(page) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById(`page-${page}`).classList.add('active');
+      document.querySelectorAll('.nav-item')[{ dashboard: 0, generate: 1, codes: 2 }[page]].classList.add('active');
+
+      if (page === 'dashboard') loadDashboard();
+      if (page === 'codes') loadCodes();
+    }
+
+    // Toast
+    function toast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 2500);
+    }
+
+    // Create QR
+    // Logo handling
+    let selectedLogoFile = null;
+
+    function handleLogoSelect(input) {
+      const file = input.files[0];
+      if (!file) return;
+      selectedLogoFile = file;
+      document.getElementById('logo-empty-state').style.display = 'none';
+      document.getElementById('logo-filled-state').style.display = 'flex';
+      document.getElementById('logo-name').textContent = file.name;
+      document.getElementById('logo-thumb').src = URL.createObjectURL(file);
+      document.getElementById('logo-upload-area').classList.add('has-file');
+      document.getElementById('logo-size-group').style.display = 'block';
+    }
+
+    function removeLogo(e) {
+      e.stopPropagation();
+      selectedLogoFile = null;
+      document.getElementById('logo-file').value = '';
+      document.getElementById('logo-empty-state').style.display = 'block';
+      document.getElementById('logo-filled-state').style.display = 'none';
+      document.getElementById('logo-upload-area').classList.remove('has-file');
+      document.getElementById('logo-size-group').style.display = 'none';
+    }
+
+    async function createQR(e) {
+      e.preventDefault();
+      const label = document.getElementById('qr-label').value.trim();
+      const targetUrl = document.getElementById('qr-url').value.trim();
+      const color = document.getElementById('qr-color').value;
+      const bgColor = document.getElementById('qr-bg').value;
+      const logoSize = document.getElementById('logo-size').value;
+
+      const fd = new FormData();
+      fd.append('label', label);
+      fd.append('targetUrl', targetUrl);
+      fd.append('color', color);
+      fd.append('bgColor', bgColor);
+      fd.append('logoSize', logoSize);
+      if (selectedLogoFile) fd.append('logo', selectedLogoFile);
+
+      try {
+        const res = await fetch('/api/qrcodes', { method: 'POST', body: fd });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: res.statusText }));
+          throw new Error(err.error || 'Request failed');
+        }
+        const qr = await res.json();
+        lastCreated = qr;
+
+        document.getElementById('preview-empty').style.display = 'none';
+        document.getElementById('preview-result').style.display = 'block';
+        document.getElementById('preview-img').src = qr.qr_data_url;
+        document.getElementById('preview-label').textContent = qr.label;
+        document.getElementById('preview-url').textContent = qr.target_url;
+
+        // Update download color pickers
+        document.getElementById('preview-dl-color').value = qr.color || '#000000';
+        document.getElementById('preview-dl-bg').value = qr.bg_color || '#ffffff';
+        const dlColorCpick = document.querySelector('[data-target="preview-dl-color"]');
+        const dlBgCpick = document.querySelector('[data-target="preview-dl-bg"]');
+        if (dlColorCpick) { cpickApply(dlColorCpick, qr.color || '#000000'); }
+        if (dlBgCpick) { cpickApply(dlBgCpick, qr.bg_color || '#ffffff'); }
+
+        // Reset form and logo state
+        document.getElementById('qr-form').reset();
+        selectedLogoFile = null;
+        document.getElementById('logo-empty-state').style.display = 'block';
+        document.getElementById('logo-filled-state').style.display = 'none';
+        document.getElementById('logo-upload-area').classList.remove('has-file');
+        document.getElementById('logo-size-group').style.display = 'none';
+        document.getElementById('logo-size-val').textContent = '20%';
+
+        toast('QR code created!');
+      } catch (err) {
+        toast('Error: ' + err.message);
+      }
+    }
+
+    // Download dropdown logic
+    const dlState = {};
+
+    function toggleDlMenu(e, menuId) {
+      if (e) e.stopPropagation();
+      // Close all other menus first
+      document.querySelectorAll('.dl-menu.show').forEach(m => {
+        if (m.id !== menuId) m.classList.remove('show');
+      });
+      const menu = document.getElementById(menuId);
+      menu.classList.toggle('show');
+      // Initialize state for this menu
+      if (!dlState[menuId]) dlState[menuId] = { fmt: 'png', bg: 'solid' };
+    }
+
+    function setDlOpt(btn, type, value) {
+      const menu = btn.closest('.dl-menu');
+      const menuId = menu.id;
+      if (!dlState[menuId]) dlState[menuId] = { fmt: 'png', bg: 'solid' };
+      dlState[menuId][type] = value;
+      // Toggle selected state within the row
+      btn.parentElement.querySelectorAll('.dl-opt').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      // Toggle bg color picker visibility
+      if (type === 'bg') {
+        const bgPickers = menu.querySelectorAll('.dl-bg-color, #preview-dl-bg');
+        bgPickers.forEach(inp => {
+          const cpick = inp.closest('.cpick');
+          if (cpick) {
+            cpick.style.opacity = value === 'transparent' ? '0.3' : '1';
+            cpick.style.pointerEvents = value === 'transparent' ? 'none' : 'auto';
+          }
+        });
+      }
+    }
+
+    function execDownload(source) {
+      let qrId, menuId, color, bgColor;
+
+      if (source === 'preview') {
+        if (!lastCreated) return;
+        qrId = lastCreated.id;
+        menuId = 'preview-dl';
+        color = document.getElementById('preview-dl-color').value;
+        bgColor = document.getElementById('preview-dl-bg').value;
+      } else {
+        qrId = source;
+        menuId = `dl-${source}`;
+        color = document.getElementById(`dl-qr-${source}`).value;
+        bgColor = document.getElementById(`dl-bg-${source}`).value;
+      }
+
+      const state = dlState[menuId] || { fmt: 'png', bg: 'solid' };
+      const transparent = state.bg === 'transparent' ? '1' : '0';
+      const fmt = state.fmt;
+
+      const url = `/api/qrcodes/${qrId}/export?format=${fmt}&transparent=${transparent}&color=${encodeURIComponent(color)}&bg=${encodeURIComponent(bgColor)}`;
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '';
+      a.click();
+
+      // Close the menu
+      document.getElementById(menuId).classList.remove('show');
+      toast(`Downloaded as ${fmt.toUpperCase()}`);
+    }
+
+    // Close download menus when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.dl-wrap')) {
+        document.querySelectorAll('.dl-menu.show').forEach(m => m.classList.remove('show'));
+      }
+    });
+
+    // Copy tracking URL
+    function copyTrackingUrl() {
+      if (!lastCreated) return;
+      navigator.clipboard.writeText(lastCreated.tracking_url);
+      toast('Tracking URL copied!');
+    }
+
+    // Load dashboard
+    async function loadDashboard() {
+      try {
+        const data = await api('/api/dashboard');
+
+        document.getElementById('stat-total-qr').textContent = data.totalQR;
+        document.getElementById('stat-total-scans').textContent = data.totalScans;
+        document.getElementById('stat-avg-scans').textContent =
+          data.totalQR > 0 ? (data.totalScans / data.totalQR).toFixed(1) : '0';
+
+        // Chart
+        renderChart('dashboard-chart', data.dailyCounts.reverse());
+
+        // Top QR codes
+        const topList = document.getElementById('top-qr-list');
+        const topEmpty = document.getElementById('top-qr-empty');
+        if (data.topQR.length === 0) {
+          topList.style.display = 'none';
+          topEmpty.style.display = 'block';
+        } else {
+          topList.style.display = 'block';
+          topEmpty.style.display = 'none';
+          topList.innerHTML = data.topQR.map(q => `
+            <li>
+              <div>
+                <span class="top-label">${esc(q.label)}</span>
+                <div style="font-size:11px; color:var(--text-muted);">${esc(q.target_url)}</div>
+              </div>
+              <span class="top-count">${q.scan_count}</span>
+            </li>
+          `).join('');
+        }
+
+        // Recent scans
+        const tbody = document.getElementById('recent-scans-body');
+        const recentEmpty = document.getElementById('recent-empty');
+        if (data.recentScans.length === 0) {
+          tbody.parentElement.parentElement.style.display = 'none';
+          recentEmpty.style.display = 'block';
+        } else {
+          tbody.parentElement.parentElement.style.display = 'block';
+          recentEmpty.style.display = 'none';
+          tbody.innerHTML = data.recentScans.map(s => `
+            <tr>
+              <td><strong>${esc(s.label)}</strong></td>
+              <td>${fmtDate(s.scanned_at)}</td>
+              <td style="font-size:12px; color:var(--text-muted);">${parseUA(s.user_agent)}</td>
+            </tr>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('Dashboard load error:', err);
+      }
+    }
+
+    // Load QR codes list
+    async function loadCodes() {
+      try {
+        const codes = await api('/api/qrcodes');
+        const grid = document.getElementById('qr-grid');
+        const empty = document.getElementById('codes-empty');
+
+        if (codes.length === 0) {
+          grid.style.display = 'none';
+          empty.style.display = 'block';
+          return;
+        }
+
+        grid.style.display = 'grid';
+        empty.style.display = 'none';
+
+        grid.innerHTML = codes.map(q => `
+          <div class="qr-card ${q.is_active ? '' : 'inactive'}">
+            <img src="${q.qr_data_url}" alt="${esc(q.label)}">
+            <div class="qr-label">${esc(q.label)}</div>
+            <div class="qr-url">${esc(q.target_url)}</div>
+            <div class="scan-badge">${q.scan_count} scan${q.scan_count !== 1 ? 's' : ''}</div>
+            <div class="qr-actions">
+              <button class="btn btn-ghost btn-sm" onclick="viewDetail('${q.id}')">Details</button>
+              <div class="dl-wrap">
+                <button class="btn btn-ghost btn-sm" onclick="toggleDlMenu(event,'dl-${q.id}')">Download</button>
+                <div class="dl-menu" id="dl-${q.id}">
+                  <h4>Format</h4>
+                  <div class="dl-row">
+                    <button class="dl-opt selected" onclick="setDlOpt(this,'fmt','png')">PNG</button>
+                    <button class="dl-opt" onclick="setDlOpt(this,'fmt','svg')">SVG</button>
+                  </div>
+                  <h4>Background</h4>
+                  <div class="dl-row">
+                    <button class="dl-opt selected" onclick="setDlOpt(this,'bg','solid')">Solid</button>
+                    <button class="dl-opt" onclick="setDlOpt(this,'bg','transparent')">Transparent</button>
+                  </div>
+                  <h4>Colors</h4>
+                  <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                      <label style="font-size:11px; color:var(--text-muted); min-width:22px;">QR</label>
+                      <div class="cpick cpick-compact" data-target="dl-qr-${q.id}" style="flex:1;">
+                        <input type="color" class="dl-qr-color" id="dl-qr-${q.id}" value="${q.color || '#000000'}">
+                        <div class="cpick-trigger" onclick="cpickToggle(this)">
+                          <div class="cpick-swatch" style="background:${q.color || '#000000'}"></div>
+                          <span class="cpick-hex">${q.color || '#000000'}</span>
+                        </div>
+                        <div class="cpick-panel"></div>
+                      </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                      <label style="font-size:11px; color:var(--text-muted); min-width:22px;">BG</label>
+                      <div class="cpick cpick-compact" data-target="dl-bg-${q.id}" style="flex:1;">
+                        <input type="color" class="dl-bg-color" id="dl-bg-${q.id}" value="${q.bg_color || '#ffffff'}">
+                        <div class="cpick-trigger" onclick="cpickToggle(this)">
+                          <div class="cpick-swatch" style="background:${q.bg_color || '#ffffff'}"></div>
+                          <span class="cpick-hex">${q.bg_color || '#ffffff'}</span>
+                        </div>
+                        <div class="cpick-panel"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <button class="dl-go" onclick="execDownload('${q.id}')">Download</button>
+                </div>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="toggleCode('${q.id}')">${q.is_active ? 'Disable' : 'Enable'}</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteCode('${q.id}')">Delete</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error('Load codes error:', err);
+      }
+    }
+
+    // Toggle active
+    async function toggleCode(id) {
+      await api(`/api/qrcodes/${id}/toggle`, 'PATCH');
+      loadCodes();
+      toast('QR code updated');
+    }
+
+    // Delete
+    async function deleteCode(id) {
+      if (!confirm('Delete this QR code and all its scan data?')) return;
+      await api(`/api/qrcodes/${id}`, 'DELETE');
+      loadCodes();
+      toast('QR code deleted');
+    }
+
+    // View detail modal
+    async function viewDetail(id) {
+      try {
+        const qr = await api(`/api/qrcodes/${id}`);
+        document.getElementById('modal-img').src = qr.qr_data_url;
+        document.getElementById('modal-label').textContent = qr.label;
+        document.getElementById('modal-url').textContent = qr.target_url;
+        document.getElementById('modal-tracking').textContent = `Tracking: ${qr.tracking_url}`;
+        document.getElementById('modal-created').textContent = `Created: ${fmtDate(qr.created_at)}`;
+
+        renderChart('modal-chart', (qr.daily_counts || []).reverse());
+
+        const tbody = document.getElementById('modal-scans-body');
+        const empty = document.getElementById('modal-scans-empty');
+        if (qr.scans.length === 0) {
+          tbody.parentElement.parentElement.style.display = 'none';
+          empty.style.display = 'block';
+        } else {
+          tbody.parentElement.parentElement.style.display = 'block';
+          empty.style.display = 'none';
+          tbody.innerHTML = qr.scans.map(s => `
+            <tr>
+              <td>${fmtDate(s.scanned_at)}</td>
+              <td style="font-size:12px; color:var(--text-muted);">${parseUA(s.user_agent)}</td>
+            </tr>
+          `).join('');
+        }
+
+        document.getElementById('detail-modal').classList.add('show');
+      } catch (err) {
+        toast('Error loading details');
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('detail-modal').classList.remove('show');
+    }
+
+    // Render bar chart
+    function renderChart(containerId, data) {
+      const container = document.getElementById(containerId);
+      if (!data || data.length === 0) {
+        container.innerHTML = '<div style="text-align:center; width:100%; color:var(--text-muted); align-self:center;">No scan data yet</div>';
+        return;
+      }
+
+      const max = Math.max(...data.map(d => d.count), 1);
+
+      container.innerHTML = data.map(d => {
+        const h = Math.max((d.count / max) * 160, 4);
+        const label = d.day.slice(5); // MM-DD
+        return `
+          <div class="chart-bar-wrap">
+            <div class="chart-count">${d.count}</div>
+            <div class="chart-bar" style="height:${h}px;"></div>
+            <div class="chart-label">${label}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Helpers
+    function esc(str) {
+      const d = document.createElement('div');
+      d.textContent = str || '';
+      return d.innerHTML;
+    }
+
+    function fmtDate(str) {
+      if (!str) return '';
+      const d = new Date(str + 'Z');
+      return d.toLocaleString();
+    }
+
+    function parseUA(ua) {
+      if (!ua) return 'Unknown';
+      if (ua.includes('iPhone') || ua.includes('iPad')) return 'iOS';
+      if (ua.includes('Android')) return 'Android';
+      if (ua.includes('Mac')) return 'Mac';
+      if (ua.includes('Windows')) return 'Windows';
+      if (ua.includes('Linux')) return 'Linux';
+      return 'Other';
+    }
+
+    // Close modal on overlay click
+    document.getElementById('detail-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeModal();
+    });
+
+    // --- Color Picker ---
+    const PRESET_COLORS = [
+      '#000000','#ffffff','#ff3b30','#ff9500','#ffcc00','#34c759','#00c7be','#007aff',
+      '#5856d6','#af52de','#ff2d55','#a2845e','#1c1c1e','#8e8e93','#e5e5ea','#f2f2f7',
+    ];
+
+    function cpickBuildPanel(panel, currentColor) {
+      const isActive = (c) => c.toLowerCase() === currentColor.toLowerCase() ? 'active' : '';
+      panel.innerHTML = `
+        <div class="cpick-presets">
+          ${PRESET_COLORS.map(c => `<button class="cpick-preset ${isActive(c)}" style="background:${c}" data-color="${c}" onclick="cpickSelect(this,'${c}')"></button>`).join('')}
+        </div>
+        <div class="cpick-input-row">
+          <span>#</span>
+          <input class="cpick-input" type="text" maxlength="7" value="${currentColor.replace('#','')}" onchange="cpickFromHex(this)" onkeyup="cpickFromHex(this)">
+          <div class="cpick-native-btn" title="Custom color">
+            <input type="color" value="${currentColor}" onchange="cpickFromNative(this)">
+            Pick
+          </div>
+        </div>
+      `;
+    }
+
+    function cpickToggle(trigger) {
+      event.stopPropagation();
+      const cpick = trigger.closest('.cpick');
+      const panel = cpick.querySelector('.cpick-panel');
+      const isOpen = panel.classList.contains('open');
+
+      // Close all other panels
+      document.querySelectorAll('.cpick-panel.open').forEach(p => p.classList.remove('open'));
+
+      if (!isOpen) {
+        const hiddenInput = cpick.querySelector('input[type="color"]');
+        cpickBuildPanel(panel, hiddenInput.value);
+        panel.classList.add('open');
+      }
+    }
+
+    function cpickSelect(presetBtn, color) {
+      event.stopPropagation();
+      const cpick = presetBtn.closest('.cpick');
+      cpickApply(cpick, color);
+      // Update active state
+      cpick.querySelectorAll('.cpick-preset').forEach(p => p.classList.remove('active'));
+      presetBtn.classList.add('active');
+      // Update hex input
+      cpick.querySelector('.cpick-input').value = color.replace('#','');
+    }
+
+    function cpickFromHex(input) {
+      event.stopPropagation();
+      let val = input.value.replace(/[^0-9a-fA-F]/g, '');
+      if (val.length === 3) val = val.split('').map(c => c + c).join('');
+      if (val.length === 6) {
+        const color = '#' + val;
+        const cpick = input.closest('.cpick');
+        cpickApply(cpick, color);
+        // Update preset active state
+        cpick.querySelectorAll('.cpick-preset').forEach(p => {
+          p.classList.toggle('active', p.dataset.color.toLowerCase() === color.toLowerCase());
+        });
+      }
+    }
+
+    function cpickFromNative(nativeInput) {
+      event.stopPropagation();
+      const cpick = nativeInput.closest('.cpick');
+      const color = nativeInput.value;
+      cpickApply(cpick, color);
+      // Update hex input and preset active state
+      cpick.querySelector('.cpick-input').value = color.replace('#','');
+      cpick.querySelectorAll('.cpick-preset').forEach(p => {
+        p.classList.toggle('active', p.dataset.color.toLowerCase() === color.toLowerCase());
+      });
+    }
+
+    function cpickApply(cpick, color) {
+      const hiddenInput = cpick.querySelector(':scope > input[type="color"]');
+      const swatch = cpick.querySelector('.cpick-swatch');
+      const hex = cpick.querySelector('.cpick-hex');
+      hiddenInput.value = color;
+      swatch.style.background = color;
+      hex.textContent = color;
+    }
+
+    // Close color panels on outside click
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.cpick')) {
+        document.querySelectorAll('.cpick-panel.open').forEach(p => p.classList.remove('open'));
+      }
+    });
+
+    // Mobile menu
+    function toggleMobileMenu() {
+      const sidebar = document.getElementById('sidebar-nav');
+      const overlay = document.getElementById('mobile-overlay');
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('show');
+    }
+
+    // Update bottom nav active state
+    function updateBottomNav(page) {
+      document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
+      const idx = { dashboard: 0, generate: 1, codes: 2 }[page];
+      document.querySelectorAll('.bottom-nav-item')[idx]?.classList.add('active');
+    }
+
+    // Patch nav() to close mobile menu and update bottom nav
+    const _origNav = nav;
+    nav = function(page) {
+      _origNav(page);
+      // Close mobile menu if open
+      document.getElementById('sidebar-nav').classList.remove('open');
+      document.getElementById('mobile-overlay').classList.remove('show');
+      updateBottomNav(page);
+    };
+
+    // Password visibility toggle
+    function togglePw(btn) {
+      const input = btn.parentElement.querySelector('input');
+      const isHidden = input.type === 'password';
+      input.type = isHidden ? 'text' : 'password';
+      btn.innerHTML = isHidden
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    }
+
+    // ===================== AUTH =====================
+    let currentUser = null;
+
+    function showAuth(page) {
+      document.body.classList.add('auth-mode');
+      document.querySelectorAll('#auth-pages > div').forEach(d => d.style.display = 'none');
+      const el = document.getElementById(`page-${page}`);
+      if (el) el.style.display = 'flex';
+      // Clear errors/successes
+      document.querySelectorAll('.auth-error, .auth-success').forEach(e => { e.style.display = 'none'; e.textContent = ''; });
+      // Auto-fill reset token from URL hash
+      if (page === 'reset') {
+        const hash = location.hash;
+        if (hash.startsWith('#reset=')) {
+          document.getElementById('reset-token').value = hash.slice(7);
+        }
+      }
+    }
+
+    function showApp() {
+      document.body.classList.remove('auth-mode');
+      document.querySelectorAll('#auth-pages > div').forEach(d => d.style.display = 'none');
+      // Update sidebar user info
+      if (currentUser) {
+        document.getElementById('sidebar-user').style.display = 'flex';
+        document.getElementById('user-name').textContent = currentUser.name;
+        document.getElementById('user-email').textContent = currentUser.email;
+        document.getElementById('user-avatar').textContent = currentUser.name.charAt(0).toUpperCase();
+      }
+      nav('dashboard');
+    }
+
+    function showAuthError(id, msg) {
+      const el = document.getElementById(id);
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      document.getElementById('login-error').style.display = 'none';
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) return showAuthError('login-error', data.error);
+        currentUser = data.user;
+        showApp();
+      } catch { showAuthError('login-error', 'Something went wrong'); }
+    }
+
+    async function handleSignup(e) {
+      e.preventDefault();
+      document.getElementById('signup-error').style.display = 'none';
+      const name = document.getElementById('signup-name').value.trim();
+      const email = document.getElementById('signup-email').value.trim();
+      const password = document.getElementById('signup-password').value;
+      const confirm = document.getElementById('signup-confirm').value;
+      if (password !== confirm) return showAuthError('signup-error', 'Passwords do not match');
+      try {
+        const res = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) return showAuthError('signup-error', data.error);
+        currentUser = data.user;
+        showApp();
+      } catch { showAuthError('signup-error', 'Something went wrong'); }
+    }
+
+    async function handleForgot(e) {
+      e.preventDefault();
+      document.getElementById('forgot-error').style.display = 'none';
+      const email = document.getElementById('forgot-email').value.trim();
+      try {
+        const res = await fetch('/api/auth/forgot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+        if (!res.ok) return showAuthError('forgot-error', data.error);
+        if (data.token) {
+          document.getElementById('forgot-form').style.display = 'none';
+          document.getElementById('forgot-token-result').style.display = 'block';
+          document.getElementById('forgot-token-value').textContent = data.token;
+        } else {
+          const suc = document.getElementById('forgot-success');
+          suc.textContent = data.message;
+          suc.style.display = 'block';
+        }
+      } catch { showAuthError('forgot-error', 'Something went wrong'); }
+    }
+
+    async function handleReset(e) {
+      e.preventDefault();
+      document.getElementById('reset-error').style.display = 'none';
+      const token = document.getElementById('reset-token').value.trim();
+      const password = document.getElementById('reset-password').value;
+      const confirm = document.getElementById('reset-confirm').value;
+      if (password !== confirm) return showAuthError('reset-error', 'Passwords do not match');
+      try {
+        const res = await fetch('/api/auth/reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) return showAuthError('reset-error', data.error);
+        const suc = document.getElementById('reset-success');
+        suc.textContent = 'Password reset! Redirecting to sign in...';
+        suc.style.display = 'block';
+        setTimeout(() => showAuth('login'), 1500);
+      } catch { showAuthError('reset-error', 'Something went wrong'); }
+    }
+
+    async function handleLogout() {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      currentUser = null;
+      document.getElementById('sidebar-user').style.display = 'none';
+      showAuth('login');
+    }
+
+    // Check auth on init
+    async function initAuth() {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          currentUser = data.user;
+          showApp();
+        } else {
+          // Check for reset token in hash
+          if (location.hash.startsWith('#reset=')) {
+            showAuth('reset');
+          } else {
+            showAuth('login');
+          }
+        }
+      } catch {
+        showAuth('login');
+      }
+    }
+
+    // Init
+    initAuth();
+  </script>
+
+  <!-- Bottom nav (mobile) -->
+  <nav class="bottom-nav">
+    <button class="bottom-nav-item active" onclick="nav('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="bottom-nav-item" onclick="nav('generate')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Generate
+    </button>
+    <button class="bottom-nav-item" onclick="nav('codes')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><circle cx="17.5" cy="17.5" r="3.5"/></svg>
+      My Codes
+    </button>
+  </nav>
+</body>
+</html>
