@@ -27,8 +27,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 
-// JWT secret — persist across restarts
-const SECRET_FILE = path.join(__dirname, '.jwt-secret');
+// JWT secret — persist across restarts (use volume if available)
+const SECRET_DIR = fs.existsSync('/data') ? '/data' : __dirname;
+const SECRET_FILE = path.join(SECRET_DIR, '.jwt-secret');
 let JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
   try { JWT_SECRET = fs.readFileSync(SECRET_FILE, 'utf8').trim(); } catch {
@@ -40,8 +41,9 @@ if (!JWT_SECRET) {
 // Multer — store uploaded logos in memory
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
 
-// Database setup
-const db = new Database(path.join(__dirname, 'qrcodes.db'));
+// Database setup — use persistent volume on Railway, local dir otherwise
+const DATA_DIR = fs.existsSync('/data') ? '/data' : __dirname;
+const db = new Database(path.join(DATA_DIR, 'qrcodes.db'));
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
