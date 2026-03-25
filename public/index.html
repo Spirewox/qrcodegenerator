@@ -1410,9 +1410,9 @@
   </div>
 
   <!-- Detail Modal -->
-  <div class="modal-overlay" id="detail-modal">
+  <div class="modal-overlay" id="detail-modal" role="dialog" aria-modal="true">
     <div class="modal">
-      <button class="close-btn" onclick="closeModal()">&times;</button>
+      <button class="close-btn" onclick="closeModal()" aria-label="Close">&times;</button>
       <div style="display:flex; gap: 20px; align-items: flex-start; margin-bottom: 20px;">
         <img id="modal-img" style="width:140px; height:140px; border-radius:8px; background:#fff; padding:8px;">
         <div>
@@ -1455,6 +1455,7 @@
       const res = await fetch(path, opts);
       if (res.status === 401) {
         currentUser = null;
+        toast('Session expired. Please sign in again.');
         showAuth('login');
         throw new Error('Session expired');
       }
@@ -1487,21 +1488,28 @@
     // Create QR
     // Logo handling
     let selectedLogoFile = null;
+    let logoObjectUrl = null;
 
     function handleLogoSelect(input) {
       const file = input.files[0];
       if (!file) return;
+      if (!file.type.startsWith('image/')) { toast('Please select an image file'); return; }
+      if (file.size > 2 * 1024 * 1024) { toast('Logo must be under 2MB'); return; }
+      // Clean up previous object URL
+      if (logoObjectUrl) URL.revokeObjectURL(logoObjectUrl);
       selectedLogoFile = file;
+      logoObjectUrl = URL.createObjectURL(file);
       document.getElementById('logo-empty-state').style.display = 'none';
       document.getElementById('logo-filled-state').style.display = 'flex';
       document.getElementById('logo-name').textContent = file.name;
-      document.getElementById('logo-thumb').src = URL.createObjectURL(file);
+      document.getElementById('logo-thumb').src = logoObjectUrl;
       document.getElementById('logo-upload-area').classList.add('has-file');
       document.getElementById('logo-size-group').style.display = 'block';
     }
 
     function removeLogo(e) {
-      e.stopPropagation();
+      if (e) e.stopPropagation();
+      if (logoObjectUrl) { URL.revokeObjectURL(logoObjectUrl); logoObjectUrl = null; }
       selectedLogoFile = null;
       document.getElementById('logo-file').value = '';
       document.getElementById('logo-empty-state').style.display = 'block';
@@ -1510,14 +1518,41 @@
       document.getElementById('logo-size-group').style.display = 'none';
     }
 
+    // Drag-and-drop for logo
+    (function() {
+      const area = document.getElementById('logo-upload-area');
+      if (!area) return;
+      ['dragenter','dragover'].forEach(ev => area.addEventListener(ev, e => { e.preventDefault(); area.style.borderColor = 'var(--ring)'; }));
+      ['dragleave','drop'].forEach(ev => area.addEventListener(ev, e => { e.preventDefault(); area.style.borderColor = ''; }));
+      area.addEventListener('drop', e => {
+        const file = e.dataTransfer?.files?.[0];
+        if (file && file.type.startsWith('image/')) {
+          const input = document.getElementById('logo-file');
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          input.files = dt.files;
+          handleLogoSelect(input);
+        }
+      });
+    })();
+
     async function createQR(e) {
       e.preventDefault();
+      const submitBtn = e.target.querySelector('button[type="submit"]');
       const label = document.getElementById('qr-label').value.trim();
       let targetUrl = document.getElementById('qr-url').value.trim();
+
+      if (!label) return toast('Label is required');
+      if (!targetUrl) return toast('Destination URL is required');
       if (targetUrl && !/^https?:\/\//i.test(targetUrl)) targetUrl = 'https://' + targetUrl;
+
       const color = document.getElementById('qr-color').value;
       const bgColor = document.getElementById('qr-bg').value;
       const logoSize = document.getElementById('logo-size').value;
+
+      // Prevent double submit
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Generating...';
 
       const fd = new FormData();
       fd.append('label', label);
@@ -1547,21 +1582,22 @@
         document.getElementById('preview-dl-bg').value = qr.bg_color || '#ffffff';
         const dlColorCpick = document.querySelector('[data-target="preview-dl-color"]');
         const dlBgCpick = document.querySelector('[data-target="preview-dl-bg"]');
-        if (dlColorCpick) { cpickApply(dlColorCpick, qr.color || '#000000'); }
-        if (dlBgCpick) { cpickApply(dlBgCpick, qr.bg_color || '#ffffff'); }
+        if (dlColorCpick) cpickApply(dlColorCpick, qr.color || '#000000');
+        if (dlBgCpick) cpickApply(dlBgCpick, qr.bg_color || '#ffffff');
 
-        // Reset form and logo state
-        document.getElementById('qr-form').reset();
-        selectedLogoFile = null;
-        document.getElementById('logo-empty-state').style.display = 'block';
-        document.getElementById('logo-filled-state').style.display = 'none';
-        document.getElementById('logo-upload-area').classList.remove('has-file');
-        document.getElementById('logo-size-group').style.display = 'none';
+        // Clear form for next QR — keep colors, clear text + logo
+        document.getElementById('qr-label').value = '';
+        document.getElementById('qr-url').value = '';
+        removeLogo(null);
+        document.getElementById('logo-size').value = 20;
         document.getElementById('logo-size-val').textContent = '20%';
 
         toast('QR code created!');
       } catch (err) {
         toast('Error: ' + err.message);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Generate QR Code';
       }
     }
 
@@ -1625,7 +1661,7 @@
 
       const a = document.createElement('a');
       a.href = url;
-      a.download = '';
+      a.download = `qr-code.${fmt}`;
       a.click();
 
       // Close the menu
@@ -1641,10 +1677,23 @@
     });
 
     // Copy tracking URL
-    function copyTrackingUrl() {
+    async function copyTrackingUrl() {
       if (!lastCreated) return;
-      navigator.clipboard.writeText(lastCreated.tracking_url);
-      toast('Tracking URL copied!');
+      try {
+        await navigator.clipboard.writeText(lastCreated.tracking_url);
+        toast('Tracking URL copied!');
+      } catch {
+        // Fallback for older browsers
+        const ta = document.createElement('textarea');
+        ta.value = lastCreated.tracking_url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        toast('Tracking URL copied!');
+      }
     }
 
     // Load dashboard
@@ -1658,7 +1707,7 @@
           data.totalQR > 0 ? (data.totalScans / data.totalQR).toFixed(1) : '0';
 
         // Chart
-        renderChart('dashboard-chart', data.dailyCounts.reverse());
+        renderChart('dashboard-chart', (data.dailyCounts || []).reverse());
 
         // Top QR codes
         const topList = document.getElementById('top-qr-list');
@@ -1698,7 +1747,7 @@
           `).join('');
         }
       } catch (err) {
-        console.error('Dashboard load error:', err);
+        if (err.message !== 'Session expired') toast('Failed to load dashboard');
       }
     }
 
@@ -1773,7 +1822,7 @@
           </div>
         `).join('');
       } catch (err) {
-        console.error('Load codes error:', err);
+        if (err.message !== 'Session expired') toast('Failed to load QR codes');
       }
     }
 
@@ -1806,13 +1855,14 @@
 
         const tbody = document.getElementById('modal-scans-body');
         const empty = document.getElementById('modal-scans-empty');
-        if (qr.scans.length === 0) {
+        const scans = qr.scans || [];
+        if (scans.length === 0) {
           tbody.parentElement.parentElement.style.display = 'none';
           empty.style.display = 'block';
         } else {
           tbody.parentElement.parentElement.style.display = 'block';
           empty.style.display = 'none';
-          tbody.innerHTML = qr.scans.map(s => `
+          tbody.innerHTML = scans.map(s => `
             <tr>
               <td>${fmtDate(s.scanned_at)}</td>
               <td style="font-size:12px; color:var(--text-muted);">${parseUA(s.user_agent)}</td>
@@ -1876,9 +1926,16 @@
       return 'Other';
     }
 
-    // Close modal on overlay click
+    // Close modal on overlay click or Escape key
     document.getElementById('detail-modal').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+        document.querySelectorAll('.dl-menu.show').forEach(m => m.classList.remove('show'));
+        document.querySelectorAll('.cpick-panel.open').forEach(p => p.classList.remove('open'));
+      }
     });
 
     // --- Color Picker ---
