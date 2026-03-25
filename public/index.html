@@ -1390,6 +1390,7 @@
                   </div>
                 </div>
                 <button class="btn btn-ghost btn-sm" onclick="copyTrackingUrl()">Copy Link</button>
+                <button class="btn btn-ghost btn-sm" onclick="resetGenerateForm()">New QR</button>
               </div>
             </div>
           </div>
@@ -1585,20 +1586,33 @@
         if (dlColorCpick) cpickApply(dlColorCpick, qr.color || '#000000');
         if (dlBgCpick) cpickApply(dlBgCpick, qr.bg_color || '#ffffff');
 
-        // Clear form for next QR — keep colors, clear text + logo
-        document.getElementById('qr-label').value = '';
-        document.getElementById('qr-url').value = '';
-        removeLogo(null);
-        document.getElementById('logo-size').value = 20;
-        document.getElementById('logo-size-val').textContent = '20%';
-
-        toast('QR code created!');
+        toast('QR code created! Edit fields above and click again to regenerate.');
       } catch (err) {
         toast('Error: ' + err.message);
       } finally {
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Generate QR Code';
+        submitBtn.textContent = lastCreated ? 'Regenerate QR Code' : 'Generate QR Code';
       }
+    }
+
+    // Reset generate form for a fresh QR
+    function resetGenerateForm() {
+      document.getElementById('qr-label').value = '';
+      document.getElementById('qr-url').value = '';
+      removeLogo(null);
+      document.getElementById('logo-size').value = 20;
+      document.getElementById('logo-size-val').textContent = '20%';
+      document.getElementById('preview-empty').style.display = 'block';
+      document.getElementById('preview-result').style.display = 'none';
+      lastCreated = null;
+      document.querySelector('#qr-form button[type="submit"]').textContent = 'Generate QR Code';
+      // Reset color pickers to defaults
+      document.getElementById('qr-color').value = '#000000';
+      document.getElementById('qr-bg').value = '#ffffff';
+      const cQR = document.querySelector('[data-target="qr-color"]');
+      const cBG = document.querySelector('[data-target="qr-bg"]');
+      if (cQR) cpickApply(cQR, '#000000');
+      if (cBG) cpickApply(cBG, '#ffffff');
     }
 
     // Download dropdown logic
