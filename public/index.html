@@ -1285,7 +1285,7 @@
               </div>
               <div class="form-group">
                 <label for="qr-url">Destination URL</label>
-                <input type="url" id="qr-url" placeholder="https://example.com" required>
+                <input type="text" id="qr-url" placeholder="example.com or https://example.com" required>
               </div>
               <div class="color-row">
                 <div class="form-group">
@@ -1513,7 +1513,8 @@
     async function createQR(e) {
       e.preventDefault();
       const label = document.getElementById('qr-label').value.trim();
-      const targetUrl = document.getElementById('qr-url').value.trim();
+      let targetUrl = document.getElementById('qr-url').value.trim();
+      if (targetUrl && !/^https?:\/\//i.test(targetUrl)) targetUrl = 'https://' + targetUrl;
       const color = document.getElementById('qr-color').value;
       const bgColor = document.getElementById('qr-bg').value;
       const logoSize = document.getElementById('logo-size').value;
