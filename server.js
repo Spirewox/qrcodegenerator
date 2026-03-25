@@ -16,7 +16,7 @@ if (fs.existsSync(envPath)) {
 }
 const Database = require('better-sqlite3');
 const QRCode = require('qrcode');
-const { v4: uuidv4 } = require('uuid');
+const uuidv4 = () => crypto.randomUUID();
 const sharp = require('sharp');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
